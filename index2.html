@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>🎬 Generador de Episodios - InkaFlix</title>
+  <style>
+    body {
+      background: #0e0e0e;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 28px;
+      color: #ff4141;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, button, textarea {
+      padding: 10px;
+      margin-top: 6px;
+      width: 100%;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+    input, select, textarea {
+      background: #1e1e1e;
+      color: #fff;
+    }
+    textarea {
+      height: 300px;
+      font-family: monospace;
+      resize: vertical;
+    }
+    button {
+      background: #ff4141;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #e73737;
+    }
+    #results {
+      margin-top: 10px;
+    }
+    .result-item {
+      background: #1e1e1e;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: background 0.2s ease;
+    }
+    .result-item:hover {
+      background: #2a2a2a;
+    }
+    .result-item img {
+      width: 60px;
+      height: auto;
+      margin-right: 10px;
+      border-radius: 6px;
+    }
+    .preview-image {
+      margin-top: 10px;
+      max-width: 100%;
+      border-radius: 10px;
+      border: 2px solid #ff4141;
+      box-shadow: 0 0 10px #ff4141;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎬 Generador de Episodios - InkaFlix</h1>
+
+<input type="text" id="search" placeholder="🔍 Buscar anime..." />
+<div id="results"></div>
+
+<div class="generator">
+  <img id="preview" class="preview-image" src="" alt="Vista previa">
+  
+  <label>📺 Temporada:</label>
+  <input type="number" id="season" value="1">
+  
+  <label>🎞️ Episodio:</label>
+  <input type="number" id="episode" value="1">
+  
+  <label>🌐 Idioma:</label>
+  <select id="language">
+    <option value="Latino">Latino</option>
+    <option value="Subtitulado">Subtitulado</option>
+    <option value="Latino-Subtitulado">Latino-Subtitulado</option>
+    <option value="Español">Español</option>
+    <option value="Japonés">Japonés</option>
+    <option value="Dual">Dual</option>
+  </select>
+  
+  <label>🔗 URL del Episodio:</label>
+  <input type="text" id="url" placeholder="https://...">
+
+  <label>✍️ Nombre del Generador:</label>
+  <input type="text" id="creator" value="inkaflix">
+
+  <button onclick="generate()">⚙️ Generar Código</button>
+</div>
+
+<h3>📝 Resultado:</h3>
+<textarea id="output" readonly></textarea>
+<button onclick="copyToClipboard()">📋 Copiar Código</button>
+
+<script>
+  const API_KEY = '867b27ebb5a72c3f64ee67bc9dd7a794';
+  let selectedTV = null;
+
+  document.getElementById("search").addEventListener("input", async function () {
+    const query = this.value.trim();
+    if (!query) {
+      document.getElementById("results").innerHTML = "";
+      return;
+    }
+
+    const res = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+    const data = await res.json();
+
+    let html = "";
+    data.results.forEach(tv => {
+      const img = tv.backdrop_path
+        ? `https://image.tmdb.org/t/p/w500${tv.backdrop_path}`
+        : "https://github.com/inkaflix/API/blob/main/file_00000000b08c61f7b428b89f821779e7.png?raw=true";
+      html += `
+        <div class="result-item" onclick="selectTV(${tv.id}, '${img.replace(/'/g, "\\'")}', '${tv.name.replace(/'/g, "\\'")}')">
+          <img src="${img}" alt="${tv.name}">
+          <span>${tv.name}</span>
+        </div>
+      `;
+    });
+
+    document.getElementById("results").innerHTML = html;
+  });
+
+  function selectTV(tvId, img, title) {
+    selectedTV = { id: tvId, title: title };
+    document.getElementById("preview").src = img;
+    document.getElementById("preview").alt = title;
+    document.getElementById("search").value = title;
+    document.getElementById("results").innerHTML = "";
+  }
+
+  async function generate() {
+    const season = document.getElementById("season").value;
+    const episode = document.getElementById("episode").value;
+    const language = document.getElementById("language").value;
+    const url = document.getElementById("url").value;
+    const creator = document.getElementById("creator").value;
+
+    let episodeImage = document.getElementById("preview").src;
+    let title = document.getElementById("preview").alt;
+    let episodeTitle = "Nombre no encontrado";
+
+    if (selectedTV) {
+      const episodeRes = await fetch(`https://api.themoviedb.org/3/tv/${selectedTV.id}/season/${season}/episode/${episode}?api_key=${API_KEY}`);
+      const episodeData = await episodeRes.json();
+
+      if (episodeData.still_path) {
+        episodeImage = `https://image.tmdb.org/t/p/w500${episodeData.still_path}`;
+      }
+      if (episodeData.name) {
+        episodeTitle = episodeData.name;
+      }
+    }
+
+    const code = `
+<div class="is-episode">
+  <div class="episode-image">
+    <img src="${episodeImage}" alt="${title} ${season}x${episode}"/>
+  </div>
+  <div class="episode-metadata">
+    <div class="season-number">${season}</div>
+    <div class="episode-number">${episode}</div>
+    <div class="episode-language">${language}</div>
+    <div class="redirect-url">${url}</div>
+  </div>
+</div>
+<!-- Generado por: ${creator} -->
+<!-- Nombre del episodio: ${episodeTitle} -->
+`.trim();
+
+    document.getElementById("output").value = code;
+  }
+
+  function copyToClipboard() {
+    const textArea = document.getElementById("output");
+    textArea.select();
+    document.execCommand("copy");
+    alert("✅ Código copiado al portapapeles");
+  }
+</script>
+
+</body>
+</html>
